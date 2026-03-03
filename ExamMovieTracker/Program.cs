@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using ExamMovieTracker.Components;
 using ExamMovieTracker.Components.Account;
 using ExamMovieTracker.Data;
+using Blazored.LocalStorage;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpClient<ExamMovieTracker.Services.TmdbService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -34,6 +36,8 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
+builder.Services.AddBlazoredLocalStorage();
 
 var app = builder.Build();
 

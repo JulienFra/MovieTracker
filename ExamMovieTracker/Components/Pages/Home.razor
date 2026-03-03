@@ -1,8 +1,112 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+@using ExamMovieTracker.Models
+@using ExamMovieTracker.Services
+@inject TmdbService TmdbService
 
 <PageTitle>Accueil - MovieTracker</PageTitle>
 
-<div class="text-center mt-5">
-    <h1>🍿 Bienvenue sur MovieTracker</h1>
-    <p class="lead">Découvrez les films les plus populaires et gérez votre collection personnelle.</p>
+<div class="text-center mt-4 mb-5">
+    <h1>🍿 Films Populaires</h1>
+    <p class="lead">Découvrez les films les plus tendances du moment.</p>
 </div>
+
+@if (movies == null)
+{
+    <div class="text-center mt-5">
+        <div class="spinner-border text-warning" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Chargement...</span>
+        </div>
+        <p class="mt-2">Récupération des films...</p>
+    </div>
+}
+else if (!movies.Any())
+{
+    <div class="alert alert-warning text-center">Aucun film n'a été trouvé. Vérifie ta connexion ou ta clé d'API !</div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4 mb-5">
+        @foreach (var movie in movies)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 bg-dark text-white">
+                    
+                    @if (!string.IsNullOrEmpty(movie.PosterPath))
+                    {
+                        <img src="@($"https://image.tmdb.org/t/p/w500{movie.PosterPath}")" class="card-img-top" alt="Affiche de @movie.Title">
+                    }
+                    else
+                    {
+                        <div class="bg-secondary card-img-top d-flex align-items-center justify-content-center" style="height: 350px;">
+                            <span>Pas d'image</span>
+                        </div>
+                    }
+
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title fw-bold">@movie.Title</h6>
+                        <div class="mt-auto d-flex justify-content-between align-items-center">
+                            <span class="badge bg-warning text-dark fs-6">⭐ @movie.VoteAverage.ToString("0.1")</span>
+                            <button class="btn btn-outline-light btn-sm">🤍 Favoris</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+    <div class="d-flex justify-content-center align-items-center gap-3 mt-5 mb-5">
+        <button class="btn btn-warning fw-bold" 
+                @onclick="PagePrecedente" 
+                disabled="@(currentPage == 1)">
+            ⬅️ Précédent
+        </button>
+        
+        <span class="text-white fs-5">Page <strong>@currentPage</strong></span>
+        
+        <button class="btn btn-warning fw-bold" 
+                @onclick="PageSuivante">
+            Suivant ➡️
+        </button>
+    </div>
+
+@code {
+    private List<Movie>? movies;
+    private string? errorMessage;
+    private int currentPage = 1; // On commence à la page 1
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChargerFilms();
+    }
+
+    private async Task ChargerFilms()
+    {
+        try
+        {
+            movies = null; // Affiche le spinner pendant le chargement
+            movies = await TmdbService.GetPopularMoviesAsync(currentPage);
+            // Plus besoin du .Take(20) car l'API n'en donne que 20 par page !
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task PageSuivante()
+    {
+        currentPage++;
+        await ChargerFilms();
+    }
+
+    private async Task PagePrecedente()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await ChargerFilms();
+        }
+
+    }
+}
