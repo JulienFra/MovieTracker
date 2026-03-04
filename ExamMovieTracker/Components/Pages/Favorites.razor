@@ -1,0 +1,146 @@
+@page "/favorites"
+@rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using ExamMovieTracker.Models
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>My Favorites - MovieTracker</PageTitle>
+
+<div class="container mt-4 mb-5">
+    <h1 class="text-warning mb-4">⭐ My Favorite Movies</h1>
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-5">
+            <div class="spinner-border text-warning" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!favorites.Any())
+    {
+        <div class="alert alert-info text-center fs-5">
+            Your favorites list is empty. Go to the home page to add some! 🍿
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            @foreach (var movie in favorites.ToList())
+            {
+                bool isFavorite = favorites.Any(f => f.Id == movie.Id);
+                bool isInWatchlist = watchlist.Any(f => f.Id == movie.Id);
+
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 bg-dark text-white">
+                        
+                        <div class="position-relative">
+                            <a href="/movie/@movie.Id">
+                                @if (!string.IsNullOrEmpty(movie.PosterPath))
+                                {
+                                    <img src="@($"https://image.tmdb.org/t/p/w500{movie.PosterPath}")" class="card-img-top" alt="@movie.Title Poster">
+                                }
+                                else
+                                {
+                                    <div class="bg-secondary card-img-top d-flex align-items-center justify-content-center" style="height: 350px;">
+                                        <span>No Image</span>
+                                    </div>
+                                }
+                            </a>
+
+                            <button class="btn btn-dark border-0 position-absolute top-0 end-0 m-2 rounded-circle shadow"
+                                    style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; opacity: @(isInWatchlist ? "1" : "0.5"); transition: 0.2s;"
+                                    @onclick="() => ToggleWatchlist(movie)"
+                                    title="Add to Watchlist">
+                                👁️
+                            </button>
+                        </div>
+
+                        <div class="card-body d-flex flex-column">
+                            <a href="/movie/@movie.Id" class="text-white text-decoration-none custom-link">
+                                <h6 class="card-title fw-bold text-warning text-truncate" title="@movie.Title">
+                                    🔗 @movie.Title
+                                </h6>
+                            </a>
+                            <div class="mt-auto d-flex justify-content-between align-items-center pt-3">
+                                <span class="badge bg-warning text-dark fs-6">⭐ @movie.VoteAverage.ToString("0.0")</span>
+                                
+                                @if (isFavorite)
+                                {
+                                    <button class="btn btn-warning btn-sm fw-bold text-dark" @onclick="() => ToggleFavorite(movie)">
+                                        ⭐ Favorite
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-light btn-sm" @onclick="() => ToggleFavorite(movie)">
+                                        🤍 Favorite
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Movie> favorites = new List<Movie>();
+    private List<Movie> watchlist = new List<Movie>();
+    private bool isLoading = true;
+    private string userEmail = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try 
+            {
+                // 1. On récupère l'email de l'utilisateur connecté
+                var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+                userEmail = authState.User.Identity?.Name ?? "";
+
+                if (!string.IsNullOrEmpty(userEmail))
+                {
+                    // 2. On utilise son email pour ouvrir SA boîte personnelle
+                    var savedFavs = await LocalStorage.GetItemAsync<List<Movie>>($"favorites_{userEmail}");
+                    if (savedFavs != null) favorites = savedFavs;
+
+                    var savedWatch = await LocalStorage.GetItemAsync<List<Movie>>($"watchlist_{userEmail}");
+                    if (savedWatch != null) watchlist = savedWatch;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur: {ex.Message}");
+            }
+            finally 
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ToggleFavorite(Movie movie)
+    {
+        var existingFavorite = favorites.FirstOrDefault(f => f.Id == movie.Id);
+        if (existingFavorite != null) favorites.Remove(existingFavorite);
+        else favorites.Add(movie);
+
+        // Sauvegarde dans sa boîte personnelle
+        await LocalStorage.SetItemAsync($"favorites_{userEmail}", favorites);
+    }
+
+    private async Task ToggleWatchlist(Movie movie)
+    {
+        var existingMovie = watchlist.FirstOrDefault(f => f.Id == movie.Id);
+        if (existingMovie != null) watchlist.Remove(existingMovie);
+        else watchlist.Add(movie);
+
+        await LocalStorage.SetItemAsync($"watchlist_{userEmail}", watchlist);
+    }
+}

@@ -12,10 +12,10 @@
                 <AuthorizeView>
                     <Authorized>
                         <li class="nav-item mx-2" style="padding: 0 !important; margin: 0 !important;">
-                            <NavLink class="nav-link py-2" href="favoris">Mes favoris</NavLink>
+                            <NavLink class="nav-link py-2" href="favorites">Favorites</NavLink>
                         </li>
                         <li class="nav-item mx-2" style="padding: 0 !important; margin: 0 !important;">
-                            <NavLink class="nav-link py-2" href="a-regarder">À regarder</NavLink>
+                            <NavLink class="nav-link py-2" href="watchlist">Watchlist</NavLink>
                         </li>
                     </Authorized>
                 </AuthorizeView>
@@ -25,19 +25,19 @@
         <div class="d-flex align-items-center">
             <AuthorizeView>
                 <Authorized>
-                    <a href="Account/Manage" class="text-light me-4 text-decoration-none custom-profile-link" title="Aller sur mon profil">
+                    <a href="Account/Manage" class="text-light me-4 text-decoration-none custom-profile-link" title="Go to my profile">
                         👤 @context.User.Identity?.Name
                     </a>
                     
                     <form action="Account/Logout" method="post">
                         <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="/" />
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Déconnexion</button>
+                        <input type="hidden" name="ReturnUrl" value="Account/Login" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Logout</button>
                     </form>
                 </Authorized>
                 <NotAuthorized>
-                    <a class="btn btn-outline-light me-2" href="Account/Register">S'inscrire</a>
-                    <a class="btn btn-warning fw-bold" href="Account/Login">Connexion</a>
+                    <a class="btn btn-outline-light me-2" href="Account/Register">Register</a>
+                    <a class="btn btn-warning fw-bold" href="Account/Login">Login</a>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
