@@ -1,17 +1,22 @@
 @page "/favorites"
 @rendermode InteractiveServer
+
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
 @using ExamMovieTracker.Models
+
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>My Favorites - MovieTracker</PageTitle>
 
 <div class="container mt-4 mb-5">
+    
     <h1 class="text-warning mb-4">⭐ My Favorite Movies</h1>
 
     @if (isLoading)
     {
+        // 1. Écran de chargement pendant la lecture de la mémoire
         <div class="text-center mt-5">
             <div class="spinner-border text-warning" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -20,15 +25,19 @@
     }
     else if (!favorites.Any())
     {
+        // 2. Affichage si la liste des favoris est vide
         <div class="alert alert-info text-center fs-5">
             Your favorites list is empty. Go to the home page to add some! 🍿
         </div>
     }
     else
     {
+        // 3. Affichage de la grille contenant les films favoris
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            
             @foreach (var movie in favorites.ToList())
             {
+                // Vérification de la présence du film dans les listes pour adapter les boutons
                 bool isFavorite = favorites.Any(f => f.Id == movie.Id);
                 bool isInWatchlist = watchlist.Any(f => f.Id == movie.Id);
 
@@ -36,6 +45,7 @@
                     <div class="card h-100 shadow-sm border-0 bg-dark text-white">
                         
                         <div class="position-relative">
+                            
                             <a href="/movie/@movie.Id">
                                 @if (!string.IsNullOrEmpty(movie.PosterPath))
                                 {
@@ -63,6 +73,7 @@
                                     🔗 @movie.Title
                                 </h6>
                             </a>
+                            
                             <div class="mt-auto d-flex justify-content-between align-items-center pt-3">
                                 <span class="badge bg-warning text-dark fs-6">⭐ @movie.VoteAverage.ToString("0.0")</span>
                                 
@@ -88,24 +99,29 @@
 </div>
 
 @code {
+    // === VARIABLES GLOBALES ===
     private List<Movie> favorites = new List<Movie>();
     private List<Movie> watchlist = new List<Movie>();
-    private bool isLoading = true;
-    private string userEmail = "";
+    
+    private bool isLoading = true; // État de chargement par défaut
+    private string userEmail = ""; // Stockera l'identité de l'utilisateur
 
+    // === CYCLE DE VIE DU COMPOSANT ===
+    
+    // Chargement des listes de l'utilisateur après le rendu initial
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             try 
             {
-                // 1. On récupère l'email de l'utilisateur connecté
+                // 1. Récupération de l'utilisateur connecté
                 var authState = await AuthStateProvider.GetAuthenticationStateAsync();
                 userEmail = authState.User.Identity?.Name ?? "";
 
+                // 2. Chargement de SES listes personnalisées
                 if (!string.IsNullOrEmpty(userEmail))
                 {
-                    // 2. On utilise son email pour ouvrir SA boîte personnelle
                     var savedFavs = await LocalStorage.GetItemAsync<List<Movie>>($"favorites_{userEmail}");
                     if (savedFavs != null) favorites = savedFavs;
 
@@ -113,21 +129,29 @@
                     if (savedWatch != null) watchlist = savedWatch;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Erreur: {ex.Message}");
+                // Ignore silencieusement les erreurs de lecture du navigateur
             }
             finally 
             {
+                // 3. Fin du chargement et rafraîchissement de la page
                 isLoading = false;
                 StateHasChanged();
             }
         }
     }
 
+    // === ACTIONS UTILISATEUR ===
+
+    // Ajoute ou retire un film des favoris
     private async Task ToggleFavorite(Movie movie)
     {
+        // Sécurité : On s'assure que l'utilisateur est bien identifié
+        if (string.IsNullOrEmpty(userEmail)) return;
+
         var existingFavorite = favorites.FirstOrDefault(f => f.Id == movie.Id);
+        
         if (existingFavorite != null) favorites.Remove(existingFavorite);
         else favorites.Add(movie);
 
@@ -135,12 +159,18 @@
         await LocalStorage.SetItemAsync($"favorites_{userEmail}", favorites);
     }
 
+    // Ajoute ou retire un film de la liste à regarder
     private async Task ToggleWatchlist(Movie movie)
     {
+        // Sécurité : On s'assure que l'utilisateur est bien identifié
+        if (string.IsNullOrEmpty(userEmail)) return;
+
         var existingMovie = watchlist.FirstOrDefault(f => f.Id == movie.Id);
+        
         if (existingMovie != null) watchlist.Remove(existingMovie);
         else watchlist.Add(movie);
 
+        // Sauvegarde dans sa boîte personnelle
         await LocalStorage.SetItemAsync($"watchlist_{userEmail}", watchlist);
     }
 }

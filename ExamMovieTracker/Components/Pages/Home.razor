@@ -19,6 +19,7 @@
                     <input type="text" class="form-control" placeholder="Search for a movie..." 
                            @bind="searchTerm" @bind:event="oninput" @onkeyup="HandleKeyUp" />
                     <button class="btn btn-warning fw-bold" type="button" @onclick="SearchMovies">Search</button>
+                    
                     @if (!string.IsNullOrEmpty(searchTerm))
                     {
                         <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">X</button>
@@ -31,6 +32,7 @@
 
 @if (movies == null)
 {
+    // 1. Écran de chargement
     <div class="text-center mt-5">
         <div class="spinner-border text-warning" role="status" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">Loading...</span>
@@ -40,13 +42,16 @@
 }
 else if (!movies.Any())
 {
+    // 2. Aucun résultat de recherche
     <div class="alert alert-warning text-center">No movies found. Please try another search!</div>
 }
 else
 {
+    // 3. Affichage de la grille de films
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-4 mb-5">
         @foreach (var movie in movies)
         {
+            // Vérification si le film actuel est dans les listes de l'utilisateur
             bool isFavorite = favorites.Any(f => f.Id == movie.Id);
             bool isInWatchlist = watchlist.Any(f => f.Id == movie.Id);
 
@@ -65,12 +70,16 @@ else
                             </div>
                         }
 
-                        <button class="btn btn-dark border-0 position-absolute top-0 end-0 m-2 rounded-circle shadow"
-                                style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; opacity: @(isInWatchlist ? "1" : "0.5"); transition: 0.2s;"
-                                @onclick="() => ToggleWatchlist(movie)"
-                                title="Add to Watchlist">
-                            👁️
-                        </button>
+                        <AuthorizeView>
+                            <Authorized>
+                                <button class="btn btn-dark border-0 position-absolute top-0 end-0 m-2 rounded-circle shadow"
+                                        style="width: 35px; height: 35px; padding: 0; display: flex; align-items: center; justify-content: center; opacity: @(isInWatchlist ? "1" : "0.5"); transition: 0.2s;"
+                                        @onclick="() => ToggleWatchlist(movie)"
+                                        title="Add to Watchlist">
+                                    👁️
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
                     </div>
 
                     <div class="card-body d-flex flex-column">
@@ -82,18 +91,22 @@ else
                         <div class="mt-auto d-flex justify-content-between align-items-center">
                             <span class="badge bg-warning text-dark fs-6">⭐ @movie.VoteAverage.ToString("0.0")</span>
                             
-                            @if (isFavorite)
-                            {
-                                <button class="btn btn-warning btn-sm fw-bold text-dark" @onclick="() => ToggleFavorite(movie)">
-                                    ⭐ Favorite
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-outline-light btn-sm" @onclick="() => ToggleFavorite(movie)">
-                                    🤍 Favorite
-                                </button>
-                            }
+                            <AuthorizeView>
+                                <Authorized>
+                                    @if (isFavorite)
+                                    {
+                                        <button class="btn btn-warning btn-sm fw-bold text-dark" @onclick="() => ToggleFavorite(movie)">
+                                            ⭐ Favorite
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-light btn-sm" @onclick="() => ToggleFavorite(movie)">
+                                            🤍 Favorite
+                                        </button>
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
                         </div>
                     </div>
                 </div>
@@ -116,9 +129,9 @@ else
 }
 
 @code {
+    // === VARIABLES GLOBALES ===
     private List<Movie>? movies;
     private string? userEmail;
-    private string? errorMessage;
     private int currentPage = 1;
     
     // Listes du LocalStorage
@@ -129,18 +142,24 @@ else
     private string searchTerm = "";
     private bool isSearching = false;
 
+    // === CYCLE DE VIE DU COMPOSANT ===
+    
+    // S'exécute au tout premier chargement de la page pour récupérer les films
     protected override async Task OnInitializedAsync()
     {
         await LoadMovies();
     }
 
+    // S'exécute après le rendu de la page (nécessaire pour lire le LocalStorage)
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            // 1. On récupère l'identité de l'utilisateur connecté
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             userEmail = authState.User.Identity?.Name;
             
+            // 2. S'il est connecté, on charge SES listes personnelles depuis la mémoire
             if (!string.IsNullOrEmpty(userEmail))
             {
                 var favs = await LocalStorage.GetItemAsync<List<Movie>>($"favorites_{userEmail}");
@@ -150,24 +169,20 @@ else
                 if (watch != null) watchlist = watch;
             }
 
+            // 3. On demande à Blazor de rafraîchir l'affichage avec les listes chargées
             StateHasChanged();
         }
     }
 
+    // === MÉTHODES DE CHARGEMENT DE L'API ===
     private async Task LoadMovies()
     {
-        try
-        {
-            isSearching = false;
-            movies = null;
-            movies = await TmdbService.GetPopularMoviesAsync(currentPage);
-        }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
-        }
+        isSearching = false;
+        movies = null; // Fait apparaître le spinner de chargement
+        movies = await TmdbService.GetPopularMoviesAsync(currentPage);
     }
 
+    // === MÉTHODES DE PAGINATION ===
     private async Task NextPage()
     {
         currentPage++;
@@ -183,8 +198,10 @@ else
         }
     }
 
+    // === MÉTHODES DE RECHERCHE ===
     private async Task SearchMovies()
     {
+        // Si la barre est vide, on recharge les films populaires
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
             currentPage = 1;
@@ -192,16 +209,9 @@ else
             return;
         }
 
-        try
-        {
-            isSearching = true;
-            movies = null;
-            movies = await TmdbService.SearchMoviesAsync(searchTerm);
-        }
-        catch (Exception ex)
-        {
-            errorMessage = ex.Message;
-        }
+        isSearching = true;
+        movies = null; // Affiche le chargement
+        movies = await TmdbService.SearchMoviesAsync(searchTerm);
     }
 
     private async Task ClearSearch()
@@ -213,35 +223,39 @@ else
 
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
+        // Lance la recherche si on appuie sur la touche "Entrée"
         if (e.Key == "Enter")
         {
             await SearchMovies();
         }
     }
 
+    // === MÉTHODES DU LOCAL STORAGE (SAUVEGARDES) ===
     private async Task ToggleFavorite(Movie movie)
     {
-        // Sécurité : si pas connecté, le bouton ne fait rien
+        // Sécurité : si l'utilisateur n'est pas connecté, la méthode s'arrête
         if (string.IsNullOrEmpty(userEmail)) return;
 
+        // On vérifie si le film est déjà dans la liste
         var existingFavorite = favorites.FirstOrDefault(f => f.Id == movie.Id);
+        
+        // S'il y est, on le retire, sinon on l'ajoute (Principe du "Toggle")
         if (existingFavorite != null) favorites.Remove(existingFavorite);
         else favorites.Add(movie);
 
-        // On sauvegarde dans SA boîte personnelle
+        // On sauvegarde le nouveau tableau dans la boîte personnelle de l'utilisateur
         await LocalStorage.SetItemAsync($"favorites_{userEmail}", favorites);
     }
 
     private async Task ToggleWatchlist(Movie movie)
     {
-        // Sécurité : si pas connecté, le bouton ne fait rien
         if (string.IsNullOrEmpty(userEmail)) return;
 
         var existingMovie = watchlist.FirstOrDefault(f => f.Id == movie.Id);
+        
         if (existingMovie != null) watchlist.Remove(existingMovie);
         else watchlist.Add(movie);
 
-        // On sauvegarde dans SA boîte personnelle
         await LocalStorage.SetItemAsync($"watchlist_{userEmail}", watchlist);
     }
 }

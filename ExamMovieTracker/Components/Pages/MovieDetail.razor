@@ -1,7 +1,9 @@
 @page "/movie/{Id:int}"
 @rendermode InteractiveServer
+
 @using ExamMovieTracker.Models
 @using ExamMovieTracker.Services
+
 @inject TmdbService TmdbService
 @inject NavigationManager NavigationManager
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
@@ -10,12 +12,14 @@
 <PageTitle>Movie Details - MovieTracker</PageTitle>
 
 <div class="container mt-5 mb-5 text-white">
+    
     <button class="btn btn-dark mb-4 shadow-sm" @onclick="GoBack">
         ⬅️ Back to list
     </button>
 
     @if (isLoading)
     {
+        // 1. Écran de chargement pendant la lecture du LocalStorage
         <div class="text-center mt-5">
             <div class="spinner-border text-warning" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -24,16 +28,20 @@
     }
     else if (movie == null)
     {
+        // 2. Si l'API ne trouve pas le film (ex: ID invalide)
         <div class="alert alert-danger text-center">
             Movie not found. It might have been removed.
         </div>
     }
     else
     {
+        // 3. Affichage du film trouvé
+        // Vérification de l'état des listes pour changer l'apparence des boutons
         bool isFavorite = favorites.Any(f => f.Id == movie.Id);
         bool isInWatchlist = watchlist.Any(f => f.Id == movie.Id);
 
         <div class="row bg-dark p-4 rounded shadow">
+            
             <div class="col-md-4 text-center mb-4 mb-md-0">
                 @if (!string.IsNullOrEmpty(movie.PosterPath))
                 {
@@ -55,6 +63,7 @@
                     
                     <AuthorizeView>
                         <Authorized>
+                            
                             @if (isInWatchlist)
                             {
                                 <button class="btn btn-dark border border-secondary fw-bold text-white" @onclick="ToggleWatchlist">
@@ -80,6 +89,7 @@
                                     🤍 Favorite
                                 </button>
                             }
+
                         </Authorized>
                     </AuthorizeView>
                 </div>
@@ -94,31 +104,40 @@
 </div>
 
 @code {
+    // === PARAMÈTRES ET VARIABLES ===
+    
+    // Récupère l'ID du film depuis l'URL (ex: /movie/12345)
     [Parameter]
     public int Id { get; set; }
 
     private Movie? movie;
-    private bool isLoading = true;
-
-    private List<Movie> favorites = new List<Movie>();
-    private List<Movie> watchlist = new List<Movie>();
-    
+    private bool isLoading = true; // Permet d'attendre que la mémoire soit lue avant d'afficher les boutons
     private string? userEmail;
 
+    // Listes pour le LocalStorage
+    private List<Movie> favorites = new List<Movie>();
+    private List<Movie> watchlist = new List<Movie>();
+
+    // === CYCLE DE VIE DU COMPOSANT ===
+
+    // Étape 1 : Appel de l'API (s'exécute côté serveur au chargement)
     protected override async Task OnInitializedAsync()
     {
         movie = await TmdbService.GetMovieDetailsAsync(Id);
     }
 
+    // Étape 2 : Chargement des données locales (s'exécute une fois le rendu HTML généré)
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
             try 
             {
+                // Vérification de l'identité de l'utilisateur
                 var authState = await AuthStateProvider.GetAuthenticationStateAsync();
                 userEmail = authState.User.Identity?.Name;
 
+                // Si connecté, on charge ses propres listes
                 if (!string.IsNullOrEmpty(userEmail))
                 {
                     var savedFavs = await LocalStorage.GetItemAsync<List<Movie>>($"favorites_{userEmail}");
@@ -128,39 +147,49 @@
                     if (savedWatch != null) watchlist = savedWatch;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.WriteLine($"Erreur: {ex.Message}");
+                // Si le LocalStorage plante, on ignore silencieusement (évite de crasher la page)
             }
             finally
             {
+                // On retire l'écran de chargement quoi qu'il arrive et on rafraîchit l'interface
                 isLoading = false;
                 StateHasChanged();
             }
         }
     }
 
+    // === ACTIONS UTILISATEUR ===
+
+    // Retourne à la page précédente grâce à l'historique du navigateur
     private void GoBack()
     {
         NavigationManager.NavigateTo("javascript:history.back()");
     }
 
+    // Ajoute ou retire le film des favoris
     private async Task ToggleFavorite()
     {
+        // Sécurité : Vérifie que le film existe et que l'utilisateur est connecté
         if (movie == null || string.IsNullOrEmpty(userEmail)) return;
 
         var existingFavorite = favorites.FirstOrDefault(f => f.Id == movie.Id);
+        
         if (existingFavorite != null) favorites.Remove(existingFavorite);
         else favorites.Add(movie);
 
         await LocalStorage.SetItemAsync($"favorites_{userEmail}", favorites);
     }
 
+    // Ajoute ou retire le film de la watchlist
     private async Task ToggleWatchlist()
     {
+        // Sécurité : Vérifie que le film existe et que l'utilisateur est connecté
         if (movie == null || string.IsNullOrEmpty(userEmail)) return;
 
         var existingMovie = watchlist.FirstOrDefault(f => f.Id == movie.Id);
+        
         if (existingMovie != null) watchlist.Remove(existingMovie);
         else watchlist.Add(movie);
 
