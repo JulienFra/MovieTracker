@@ -5,26 +5,22 @@ namespace ExamMovieTrackertest
 {
     public class MovieTests
     {
+        // L'attribut [Fact] indique à xUnit que c'est une méthode de test
         [Fact]
-        public void Movie_Initialization_Should_Set_Properties_Correctly()
+        public void Movie_Should_Store_Personal_Comment_Correctly()
         {
-            // Arrange (Préparation des données)
-            var expectedId = 123;
-            var expectedTitle = "Inception";
-            var expectedVote = 8.8;
+            // 1. Arrange : On prépare nos données de test
+            var expectedTitle = "Interstellar";
+            var expectedComment = "Chef d'oeuvre absolu !";
+            var movie = new Movie();
 
-            // Act (Exécution de l'action à tester)
-            var movie = new Movie
-            {
-                Id = expectedId,
-                Title = expectedTitle,
-                VoteAverage = expectedVote
-            };
+            // 2. Act : On exécute l'action (assigner les valeurs)
+            movie.Title = expectedTitle;
+            movie.PersonalComment = expectedComment;
 
-            // Assert (Vérification du résultat)
-            Assert.Equal(expectedId, movie.Id);
+            // 3. Assert : On vérifie que le résultat correspond à ce qui est attendu
             Assert.Equal(expectedTitle, movie.Title);
-            Assert.Equal(expectedVote, movie.VoteAverage);
+            Assert.Equal(expectedComment, movie.PersonalComment);
         }
     }
 }
