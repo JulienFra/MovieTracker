@@ -27,6 +27,7 @@ public class Movie
     // La note moyenne du film (un nombre à virgule, d'où le type 'double')
     [JsonPropertyName("vote_average")]
     public double VoteAverage { get; set; }
+    public string PersonalComment { get; set; } = "";
 }
 
 // === CLASSE DE RÉPONSE API ===
