@@ -33,7 +33,7 @@ L'application respecte l'entièreté du cahier des charges demandé :
 
 **1. Cloner le projet**
 ```bash
-git clone [https://github.com/JulienFra/ExamMovieTracker.git](https://github.com/JulienFra/ExamMovieTracker.git)
+git clone [https://github.com/JulienFra/ExamMovieTracker.git]
 cd ExamMovieTracker
 ```
 **2. Configurer la clé API**
@@ -55,7 +55,7 @@ dotnet ef database update
 ```bash
 dotnet run
 ```
-L'application sera accessible dans ton navigateur à l'adresse indiquée dans le terminal (généralement https://localhost:5001).
+L'application sera accessible dans ton navigateur à l'adresse indiquée dans le terminal (généralement https://localhost:5090).
 
 ---
 
