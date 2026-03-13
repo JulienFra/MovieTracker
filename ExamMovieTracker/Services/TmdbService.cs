@@ -34,12 +34,20 @@ public class TmdbService
     {
         // Construction de l'URL avec interpolation de chaînes ($"...")
         var url = $"{BaseUrl}/movie/popular?api_key={_apiKey}&language=fr-FR&page={page}";
-        
-        // On fait un appel GET et on désérialise automatiquement le JSON en objet TmdbResponse
-        var response = await _httpClient.GetFromJsonAsync<TmdbResponse>(url);
-        
-        // Si response est null, on renvoie une liste vide au lieu de faire crasher l'application
-        return response?.Results ?? new List<Movie>();
+
+        try
+        {
+            // On fait un appel GET et on désérialise automatiquement le JSON en objet TmdbResponse
+            var response = await _httpClient.GetFromJsonAsync<TmdbResponse>(url);
+
+            // Si response est null, on renvoie une liste vide au lieu de faire crasher l'application
+            return response?.Results ?? new List<Movie>();
+        }
+        catch
+        {
+            // Si l'appel HTTP échoue (pas d'Internet, mauvaise clé, etc.), on renvoie une liste vide
+            return new List<Movie>();
+        }
     }
 
     // === MÉTHODE 2 : RECHERCHER UN FILM PAR NOM ===
@@ -52,9 +60,17 @@ public class TmdbService
         // Si l'utilisateur tape "Spider Man" (avec un espace), cela le transforme en "Spider%20Man" 
         // pour que l'URL reste valide et ne plante pas.
         var url = $"{BaseUrl}/search/movie?api_key={_apiKey}&language=en-US&query={Uri.EscapeDataString(query)}&page=1&include_adult=false";
-        
-        var response = await _httpClient.GetFromJsonAsync<TmdbResponse>(url);
-        return response?.Results ?? new List<Movie>();
+
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<TmdbResponse>(url);
+            return response?.Results ?? new List<Movie>();
+        }
+        catch
+        {
+            // En cas d'erreur réseau, on renvoie une liste vide pour ne pas faire planter l'UI
+            return new List<Movie>();
+        }
     }
 
     // === MÉTHODE 3 : RÉCUPÉRER LES DÉTAILS D'UN SEUL FILM ===
